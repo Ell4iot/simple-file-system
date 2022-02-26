@@ -13,7 +13,7 @@
 #define FS_OPEN_MAX_COUNT 32
 
 /**
- * fs_mount - Mount a file system
+ * fs_mount - Mount a file sy stem
  * @diskname: Name of the virtual disk file
  *
  * Open the virtual disk file @diskname and mount the file system that it
