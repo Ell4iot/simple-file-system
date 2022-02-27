@@ -119,7 +119,7 @@ int fs_info(void)
     printf("fat_free_ratio=%d/%d\n", fat_count, spb.data_block_amount);
     int root_count = 0;
     for (int i = 0; i < FS_FILE_MAX_COUNT; i++) {
-        if (!root_array[i].file_size) {
+        if ((root_array[i].file_name[0] == '\0')) {
             root_count++;
         }
     }
@@ -130,8 +130,9 @@ int fs_info(void)
 int find_empty(const char *filename) {
     int empty_entry = REACH_MAX_FILE;
     bool search = true;
+    //printf("%s", root_array[0].file_name);
     for (int i = 0; i < 128; i++) {
-        if (search && (root_array[i].file_name == NULL)) {
+        if (search && (root_array[i].file_name[0] == '\0')) {
             empty_entry = i;
             search = false;
         }
@@ -157,7 +158,6 @@ int fs_create(const char *filename)
     // creating the file
     root_array[empty_slot].file_size = 0;
     memcpy(root_array[empty_slot].file_name, filename, 16);
-
     root_array[empty_slot].first_data_index = FAT_EOC;
 
     return 0;
@@ -189,6 +189,14 @@ int fs_delete(const char *filename)
 int fs_ls(void)
 {
     /* TODO: Phase 2 */
+    printf("FS Ls:\n");
+    for (int i = 0; i < 128; i++) {
+        if (root_array[i].file_name[0] != '\0'){
+            printf("file: %s, size: %d, data_blk: %d\n", root_array[i].file_name,
+                   root_array[i].file_size, root_array[i].first_data_index);
+        }
+    }
+
     return 0;
 }
 
@@ -239,6 +247,5 @@ int fs_read(int fd, void *buf, size_t count)
     (void)count;
     return 0;
 }
-
 
 
