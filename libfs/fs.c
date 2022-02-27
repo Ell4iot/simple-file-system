@@ -132,6 +132,7 @@ int find_empty(const char *filename) {
     bool search = true;
     //printf("%s", root_array[0].file_name);
     for (int i = 0; i < 128; i++) {
+
         if (search && (root_array[i].file_name[0] == '\0')) {
             empty_entry = i;
             search = false;
@@ -168,22 +169,36 @@ int fs_delete(const char *filename)
     if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
         return -1;
     }
+    if (root_array[0].file_name[0] != '\0'){
+        //printf("cao!\n");
+    }
+    if (memcmp(filename, root_array[0].file_name, FS_FILENAME_LEN) == 0){
+        //printf("fuck!\n");
+    }
+
     int index = 0;
-    for (;index<=127;index++){
-        if (memcmp(filename,root_array[index].filename,sizeof(root_array[index].filename))){
+    for (; index < 128; index++){
+        if ((root_array[index].file_name[0] != '\0') &&
+            !(memcmp(filename, root_array[index].file_name, FS_FILENAME_LEN))){
             break;
         }
     }
-    if (index == 128){
+    if (index == 127){
+        //printf("?\n");
         return -1;
     }
-    root_array[index].filename = NULL;
+    memset(root_array[index].file_name, '\0', FS_FILENAME_LEN);
+
     int next_fat_index = root_array[index].first_data_index;
-    while (next_fat_index!= FAT_EOC){
-        memcpy(&next_fat_index,&(fat_array[next_fat_index]),sizeof(fat_array[next_fat_index]));
+    while (next_fat_index != FAT_EOC){
+        memcpy(&next_fat_index, &(fat_array[next_fat_index]), sizeof(fat_array[next_fat_index]));
         fat_array[next_fat_index] = 0;
     }
+
+    root_array[index].first_data_index = FAT_EOC;
+    root_array[index].file_size = 0;
     return 0;
+
 }
 
 int fs_ls(void)
@@ -192,6 +207,7 @@ int fs_ls(void)
     printf("FS Ls:\n");
     for (int i = 0; i < 128; i++) {
         if (root_array[i].file_name[0] != '\0'){
+            //printf("i is: %d", i);
             printf("file: %s, size: %d, data_blk: %d\n", root_array[i].file_name,
                    root_array[i].file_size, root_array[i].first_data_index);
         }
