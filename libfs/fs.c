@@ -131,7 +131,7 @@ int find_empty(const char *filename) {
     int empty_entry = REACH_MAX_FILE;
     bool search = true;
     for (int i = 0; i < 128; i++) {
-        if (search & (root_array[i].file_name == NULL)) {
+        if (search && (root_array[i].file_name == NULL)) {
             empty_entry = i;
             search = false;
         }
@@ -165,8 +165,24 @@ int fs_create(const char *filename)
 
 int fs_delete(const char *filename)
 {
-
-    (void) filename;
+    if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
+        return -1;
+    }
+    int index = 0;
+    for (;index<=127;index++){
+        if (memcmp(filename,root_array[index].filename,sizeof(root_array[index].filename))){
+            break;
+        }
+    }
+    if (index == 128){
+        return -1;
+    }
+    root_array[index].filename = NULL;
+    int next_fat_index = root_array[index].first_data_index;
+    while (next_fat_index!= FAT_EOC){
+        memcpy(&next_fat_index,&(fat_array[next_fat_index]),sizeof(fat_array[next_fat_index]));
+        fat_array[next_fat_index] = 0;
+    }
     return 0;
 }
 
