@@ -135,7 +135,7 @@ int fs_create(const char *filename)
 
 int fs_delete(const char *filename)
 {
-    /* TODO: Phase 2 */
+
     (void) filename;
     return 0;
 }
