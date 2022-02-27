@@ -7,6 +7,9 @@
 #include "disk.h"
 #include "fs.h"
 
+#define FAT_EOC 65535
+#define REACH_MAX_FILE -1
+#define FILE_ALREADY_EXIST -2
 // type and struct definition
 struct superblock {
     uint64_t signature;
@@ -19,7 +22,7 @@ struct superblock {
 }__attribute__((packed));
 
 struct root_dir {
-    uint8_t file_name[16];
+    uint8_t file_name[FS_FILENAME_LEN];
     uint32_t file_size;
     uint16_t first_data_index;
     uint16_t padding[5];
@@ -30,7 +33,7 @@ typedef struct root_dir root_dir;
 // define global variables
 struct superblock spb;
 uint16_t *fat_array;
-root_dir root_array[128];
+root_dir root_array[FS_FILE_MAX_COUNT];
 bool mount = false;
 
 int fs_mount(const char *diskname)
@@ -115,21 +118,48 @@ int fs_info(void)
     }
     printf("fat_free_ratio=%d/%d\n", fat_count, spb.data_block_amount);
     int root_count = 0;
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < FS_FILE_MAX_COUNT; i++) {
         if (!root_array[i].file_size) {
             root_count++;
         }
     }
-    printf("rdir_free_ratio=%d/%d\n", root_count, 128);
+    printf("rdir_free_ratio=%d/%d\n", root_count, FS_FILE_MAX_COUNT);
 
     return 0;
-
+}
+int find_empty(const char *filename) {
+    int empty_entry = REACH_MAX_FILE;
+    bool search = true;
+    for (int i = 0; i < 128; i++) {
+        if (search & (root_array[i].file_name == NULL)) {
+            empty_entry = i;
+            search = false;
+        }
+        if (!memcmp((root_array[i].file_name), filename, FS_FILENAME_LEN)) {
+            return FILE_ALREADY_EXIST;
+        }
+    }
+    return empty_entry;
 }
 
 int fs_create(const char *filename)
 {
     /* TODO: Phase 2 */
-    (void) filename;
+
+    if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
+        return -1;
+    }
+
+    int empty_slot = find_empty(filename);
+    if ((empty_slot == FILE_ALREADY_EXIST) || (empty_slot == REACH_MAX_FILE)) {
+        return -1;
+    }
+    // creating the file
+    root_array[empty_slot].file_size = 0;
+    memcpy(root_array[empty_slot].file_name, filename, 16);
+
+    root_array[empty_slot].first_data_index = FAT_EOC;
+
     return 0;
 }
 
@@ -193,3 +223,6 @@ int fs_read(int fd, void *buf, size_t count)
     (void)count;
     return 0;
 }
+
+
+
