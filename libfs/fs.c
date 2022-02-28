@@ -248,7 +248,7 @@ int fs_close(int fd)
     if ((!mount)){
         return -1;
     }
-    if (fd_table[i].file_name[0] == '\0'){
+    if (fd_table[fd].file_name[0] == '\0'){
         return -1;
     }
     memset(fd_table[fd].filename,'\0', FS_FILENAME_LEN);
