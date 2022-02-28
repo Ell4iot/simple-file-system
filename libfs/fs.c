@@ -245,8 +245,14 @@ int fs_open(const char *filename)
 
 int fs_close(int fd)
 {
-    /* TODO: Phase 3 */
-    (void) fd;
+    if ((!mount)){
+        return -1;
+    }
+    if (fd_table[i].file_name[0] == '\0'){
+        return -1;
+    }
+    memset(fd_table[fd].filename,'\0', FS_FILENAME_LEN);
+    memset(fd_table[fd].offset = 0);
     return 0;
 }
 
