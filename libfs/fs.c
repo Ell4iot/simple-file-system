@@ -31,7 +31,7 @@ struct root_dir {
 struct file_descriptor {
     int root_index;
     uint8_t file_name[FS_FILENAME_LEN];
-    uint16_t offset;
+    uint32_t offset;
 };
 
 typedef struct root_dir root_dir;
@@ -286,16 +286,19 @@ int fs_stat(int fd)
 
 int fs_lseek(int fd, size_t offset)
 {
+    // check if not mounted, or fd is invalid, not open
     if ((!mount)){
         return -1;
     }
     if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
         return -1;
     }
+    // check if offset is larger than current file size
     int root_index = fd_table[fd].root_index;
     if (offset > root_array[root_index].file_size) {
         return -1;
     }
+    fd_table[fd].offset = offset;
     return 0;
 }
 
