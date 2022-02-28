@@ -248,18 +248,24 @@ int fs_close(int fd)
     if ((!mount)){
         return -1;
     }
-    if (fd_table[fd].file_name[0] == '\0'){
+    if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
         return -1;
     }
-    memset(fd_table[fd].filename,'\0', FS_FILENAME_LEN);
-    memset(fd_table[fd].offset = 0);
+    memset(fd_table[fd].file_name,'\0', FS_FILENAME_LEN);
+    fd_table[fd].offset = 0;
     return 0;
 }
 
 int fs_stat(int fd)
 {
-    /* TODO: Phase 3 */
-    (void) fd;
+    if ((!mount)){
+        return -1;
+    }
+    if (fd_table[fd].file_name[0] == '\0' || fd > 31 || fd < 0){
+        return -1;
+    }
+    memcpy
+
     return 0;
 }
 
