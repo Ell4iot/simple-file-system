@@ -6,5 +6,5 @@
 #include <stdbool.h>
 
 int main(void){
-    mem
+    uint32_t file_size;
 }

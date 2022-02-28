@@ -271,9 +271,14 @@ int fs_stat(int fd)
     if (fd_table[fd].file_name[0] == '\0' || fd > 31 || fd < 0){
         return -1;
     }
-    memcpy
-
-    return 0;
+    char *file_name;
+    memcpy(file_name,fd_table[fd].file_name,FS_FILENAME_LEN);
+    for (int i = 0; i < 128 ;i++){
+        if (!memcmp((root_array[i].file_name), file_name, FS_FILENAME_LEN)){
+            return root_array[i].file_size;
+        }
+    }
+    return -1;
 }
 
 int fs_lseek(int fd, size_t offset)
