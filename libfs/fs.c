@@ -29,9 +29,9 @@ struct root_dir {
 }__attribute__((packed));
 
 struct file_descriptor {
+    int root_index;
     uint8_t file_name[FS_FILENAME_LEN];
     uint16_t offset;
-
 };
 
 typedef struct root_dir root_dir;
@@ -134,7 +134,7 @@ int fs_info(void)
 
     return 0;
 }
-int find_empty(const char *filename) {
+int find_empty(const char *filename, bool return_index, int *index) {
     int empty_entry = REACH_MAX_FILE;
     bool search = true;
     //printf("%s", root_array[0].file_name);
@@ -145,6 +145,9 @@ int find_empty(const char *filename) {
             search = false;
         }
         if (!memcmp((root_array[i].file_name), filename, FS_FILENAME_LEN)) {
+            if (return_index) {
+                *index = i;
+            }
             return FILE_ALREADY_EXIST;
         }
     }
@@ -159,7 +162,7 @@ int fs_create(const char *filename)
         return -1;
     }
 
-    int empty_slot = find_empty(filename);
+    int empty_slot = find_empty(filename, false, NULL);
     if ((empty_slot == FILE_ALREADY_EXIST) || (empty_slot == REACH_MAX_FILE)) {
         return -1;
     }
@@ -229,7 +232,8 @@ int fs_open(const char *filename)
     if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
         return -1;
     }
-    if (find_empty(filename) != FILE_ALREADY_EXIST) {
+    int root_index;
+    if (find_empty(filename, true, &root_index) != FILE_ALREADY_EXIST) {
         return -1;
     }
 
@@ -237,14 +241,17 @@ int fs_open(const char *filename)
     for (int i = 0; i < FOPEN_MAX; i++) {
         if (fd_table[i].file_name[0] == '\0') {
             fd = i;
+            break;
         }
     }
+
     if (fd == -1) {
         return -1;
     }
     //fd_table[fd].fd = fd;
     memcpy(fd_table[fd].file_name, filename, 16);
     fd_table[fd].offset = 0;
+    fd_table[fd].root_index = root_index;
 
     return fd;
 }
@@ -258,7 +265,7 @@ int fs_close(int fd)
         return -1;
     }
     memset(fd_table[fd].file_name,'\0', FS_FILENAME_LEN);
-   fd_table[fd].offset = 0;
+    fd_table[fd].offset = 0;
 
     return 0;
 }
@@ -283,9 +290,16 @@ int fs_stat(int fd)
 
 int fs_lseek(int fd, size_t offset)
 {
-    /* TODO: Phase 3 */
-    (void) fd;
-    (void) offset;
+    if ((!mount)){
+        return -1;
+    }
+    if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
+        return -1;
+    }
+    int root_index = fd_table[fd].root_index;
+    if (offset > root_array[root_index].file_size) {
+        return -1;
+    }
     return 0;
 }
 
