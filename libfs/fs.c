@@ -29,7 +29,6 @@ struct root_dir {
 }__attribute__((packed));
 
 struct file_descriptor {
-    int fd;
     uint8_t file_name[FS_FILENAME_LEN];
     uint16_t offset;
 
@@ -43,7 +42,6 @@ uint16_t *fat_array;
 root_dir root_array[FS_FILE_MAX_COUNT];
 fd_struct fd_table[FS_OPEN_MAX_COUNT];
 bool mount = false;
-int available_fd = 0;
 
 int fs_mount(const char *diskname)
 {
@@ -234,12 +232,17 @@ int fs_open(const char *filename)
     if (find_empty(filename) != FILE_ALREADY_EXIST) {
         return -1;
     }
-    int fd = available_fd;
-    fd_table[fd].fd = fd;
+
+    int fd;
+    for (int i = 0; i < FOPEN_MAX; i++) {
+        if (fd_table[i].file_name[0] == '\0') {
+            fd = i;
+        }
+    }
+    //fd_table[fd].fd = fd;
     memcpy(fd_table[fd].file_name, filename, 16);
     fd_table[fd].offset = 0;
 
-    available_fd++;
     return fd;
 }
 
