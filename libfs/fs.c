@@ -307,7 +307,7 @@ void find_block(uint32_t offset, int *block_amount, uint32_t *remain_offset) {
 int fs_write(int fd, void *buf, size_t count)
 {
     /* TODO: Phase 4 */
-
+    
 
     return 0;
 }
