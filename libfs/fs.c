@@ -304,11 +304,20 @@ void find_block(uint32_t offset, int *block_amount, uint32_t *remain_offset) {
     *block_amount = offset / 4096;
 }
 
+uint16_t data_index(uint16_t current_block, int remaining) {
+    uint16_t next = fat_array[current_block];
+    remaining--;
+    if (!remaining) {
+        return next;
+    }
+    return data_index(next, remaining);
+}
 int fs_write(int fd, void *buf, size_t count)
 {
     /* TODO: Phase 4 */
-
-
+    (void)fd;
+    (void)buf;
+    (void)count;
     return 0;
 }
 
@@ -323,16 +332,48 @@ int fs_read(int fd, void *buf, size_t count)
     char bounce[4096];
     int block_amount;
     uint32_t remain_offset;
-    // find the index of the first data block to read
-    find_block(fd_table[fd].offset, &block_amount, &remain_offset);
-    int first_block = root_array[fd_table[fd].root_index].first_data_index;
+    size_t remaining_to_read = count;
+    size_t bytes_to_read;
+    int already_read = 0;
+    uint16_t block_to_start;
 
+    // given the offset, find the corresponding data block to start reading
+    // block_to_start is the place where we start reading.
+    find_block(fd_table[fd].offset, &block_amount, &remain_offset);
+    uint16_t first_data_index = root_array[fd_table[fd].root_index].first_data_index;
+
+    // file is empty, don't read at all
+    if (first_data_index == FAT_EOC) {
+        return 0;
+    }
+    if (block_amount) {
+        // need to find the data block where offset is at
+        block_to_start = data_index(first_data_index, block_amount - 1);
+    } else {
+        // offset is at the fisrt data block
+        block_to_start = first_data_index;
+    }
+
+    // stop reading only when remaining_to_read is 0
+    while (!remaining_to_read) {
+        block_read(block_to_start, bounce);
+        if (remaining_to_read >= 4096 - remain_offset) {
+            bytes_to_read = 4096 - remain_offset;
+        } else {
+            bytes_to_read = remaining_to_read;
+        }
+        memcpy(buf + already_read, bounce + remain_offset, bytes_to_read);
+        already_read = already_read + bytes_to_read;
+        remaining_to_read = remaining_to_read - bytes_to_read;
+
+        remain_offset = 0;
+        block_to_start = fat_array[block_to_start];
+        // stop reading if reach the end of the file
+        if (block_to_start == FAT_EOC) {
+            break;
+        }
+    }
 
     // remember the case when file is 0
-    return 0;
-}
-
-uint16_t data_index(int first_block, int block_amount) {
-    if
-        return data_index()
+    return already_read;
 }
