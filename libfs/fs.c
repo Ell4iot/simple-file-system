@@ -321,4 +321,7 @@ int fs_read(int fd, void *buf, size_t count)
     return 0;
 }
 
-
+void fat_modify(int fd, uint16_t *fat_array,int inc_size){
+    int root_dir_index = fd_table[fd].root_index;
+    int fat_start = 
+}
