@@ -156,8 +156,7 @@ int find_empty(const char *filename, bool return_index, int *index) {
 
 int fs_create(const char *filename)
 {
-    /* TODO: Phase 2 */
-
+    // error checking
     if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
         return -1;
     }
@@ -228,7 +227,7 @@ int fs_ls(void)
 
 int fs_open(const char *filename)
 {
-    /* TODO: Phase 3 */
+    // check no FS is mounted, or invalid filename, or can't open filename
     if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
         return -1;
     }
@@ -236,7 +235,7 @@ int fs_open(const char *filename)
     if (find_empty(filename, true, &root_index) != FILE_ALREADY_EXIST) {
         return -1;
     }
-
+    // check if fd table is full
     int fd = -1;
     for (int i = 0; i < FOPEN_MAX; i++) {
         if (fd_table[i].file_name[0] == '\0') {
@@ -244,11 +243,10 @@ int fs_open(const char *filename)
             break;
         }
     }
-
     if (fd == -1) {
         return -1;
     }
-    //fd_table[fd].fd = fd;
+    // open the file
     memcpy(fd_table[fd].file_name, filename, 16);
     fd_table[fd].offset = 0;
     fd_table[fd].root_index = root_index;
@@ -258,7 +256,7 @@ int fs_open(const char *filename)
 
 int fs_close(int fd)
 {
-    if ((!mount)){
+    if (!mount){
         return -1;
     }
     if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
@@ -272,14 +270,14 @@ int fs_close(int fd)
 
 int fs_stat(int fd)
 {
-    if ((!mount)){
+    if (!mount){
         return -1;
     }
     if (fd_table[fd].file_name[0] == '\0' || fd > 31 || fd < 0){
         return -1;
     }
     int root_index;
-    memcpy(&root_index,&(fd_table[fd].root_index),sizeof(fd_table[fd].root_index));
+    memcpy(&root_index, &(fd_table[fd].root_index), sizeof(fd_table[fd].root_index));
     return root_array[root_index].file_size;
 
 }
@@ -301,27 +299,47 @@ int fs_lseek(int fd, size_t offset)
     fd_table[fd].offset = offset;
     return 0;
 }
+void find_block(uint32_t offset, int *block_amount, uint32_t *remain_offset) {
+    *remain_offset = offset % 4096;
+    *block_amount = offset / 4096;
+}
 
 int fs_write(int fd, void *buf, size_t count)
 {
     /* TODO: Phase 4 */
-    (void) fd;
-    (void) buf;
-    (void)count;
+
 
     return 0;
 }
 
 int fs_read(int fd, void *buf, size_t count)
 {
-    /* TODO: Phase 4 */
-    (void) fd;
-    (void) buf;
-    (void)count;
+    if ((!mount) || (buf == NULL)){
+        return -1;
+    }
+    if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
+        return -1;
+    }
+    char bounce[4096];
+    int block_amount;
+    uint32_t remain_offset;
+    // find the index of the first data block to read
+    find_block(fd_table[fd].offset, &block_amount, &remain_offset);
+    int first_block = root_array[fd_table[fd].root_index].first_data_index;
+
+
+    // remember the case when file is 0
     return 0;
 }
+
 
 void fat_modify(int fd, uint16_t *fat_array,int inc_size){
     int root_dir_index = fd_table[fd].root_index;
     int fat_start = 
 }
+
+uint16_t data_index(int first_block, int block_amount) {
+    if
+        return data_index()
+}
+
