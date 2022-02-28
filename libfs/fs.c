@@ -233,11 +233,14 @@ int fs_open(const char *filename)
         return -1;
     }
 
-    int fd;
+    int fd = -1;
     for (int i = 0; i < FOPEN_MAX; i++) {
         if (fd_table[i].file_name[0] == '\0') {
             fd = i;
         }
+    }
+    if (fd == -1) {
+        return -1;
     }
     //fd_table[fd].fd = fd;
     memcpy(fd_table[fd].file_name, filename, 16);
@@ -254,8 +257,8 @@ int fs_close(int fd)
     if (fd_table[fd].file_name[0] == '\0'){
         return -1;
     }
-    memset(fd_table[fd].filename,'\0', FS_FILENAME_LEN);
-    memset(fd_table[fd].offset = 0);
+    memset(fd_table[fd].file_name,'\0', FS_FILENAME_LEN);
+
     return 0;
 }
 
