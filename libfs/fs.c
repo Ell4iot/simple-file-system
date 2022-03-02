@@ -319,9 +319,7 @@ uint16_t data_index(uint16_t current_block, int remaining) {
 int fs_write(int fd, void *buf, size_t count)
 {
     /* TODO: Phase 4 */
-    (void)fd;
-    (void)buf;
-    (void)count;
+
     return 0;
 }
 
