@@ -139,12 +139,12 @@ int find_empty(const char *filename, bool return_index, int *index) {
     bool search = true;
     //printf("%s", root_array[0].file_name);
     for (int i = 0; i < 128; i++) {
-
+        //printf("i: %d, name: %s\n", i, root_array[i].file_name);
         if (search && (root_array[i].file_name[0] == '\0')) {
             empty_entry = i;
             search = false;
         }
-        if (!memcmp((root_array[i].file_name), filename, FS_FILENAME_LEN)) {
+        if (!memcmp((root_array[i].file_name), filename, strlen(filename))) {
             if (return_index) {
                 *index = i;
             }
@@ -167,7 +167,7 @@ int fs_create(const char *filename)
     }
     // creating the file
     root_array[empty_slot].file_size = 0;
-    memcpy(root_array[empty_slot].file_name, filename, 16);
+    memcpy(root_array[empty_slot].file_name, filename, strlen(filename));
     root_array[empty_slot].first_data_index = FAT_EOC;
 
     return 0;
@@ -229,10 +229,13 @@ int fs_open(const char *filename)
 {
     // check no FS is mounted, or invalid filename, or can't open filename
     if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
+        //printf("232\n");
         return -1;
     }
     int root_index;
+    //printf("236: %s\n", filename);
     if (find_empty(filename, true, &root_index) != FILE_ALREADY_EXIST) {
+        //printf("237\n");
         return -1;
     }
     // check if fd table is full
@@ -244,6 +247,7 @@ int fs_open(const char *filename)
         }
     }
     if (fd == -1) {
+        //printf("249\n");
         return -1;
     }
     // open the file
@@ -437,7 +441,7 @@ int fs_read(int fd, void *buf, size_t count)
     if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
         return -1;
     }
-    char bounce[4096];
+    uint8_t bounce[4096];
     int block_amount;
     uint32_t remain_offset;
     size_t remaining_to_read = count;
@@ -456,15 +460,17 @@ int fs_read(int fd, void *buf, size_t count)
     }
     if (block_amount) {
         // need to find the data block where offset is at
-        block_to_start = data_index(first_data_index, block_amount - 1);
+        block_to_start = data_index(first_data_index, block_amount);
     } else {
         // offset is at the fisrt data block
         block_to_start = first_data_index;
     }
+    //test_fs.x cat disk.fs bunnygirl.txt
+    int before_data_block = 1 + spb.fat_amount + 1;
+    while (remaining_to_read) {
 
-    // stop reading only when remaining_to_read is 0
-    while (!remaining_to_read) {
-        block_read(block_to_start, bounce);
+        block_read(before_data_block + block_to_start, bounce);
+
         if (remaining_to_read >= 4096 - remain_offset) {
             bytes_to_read = 4096 - remain_offset;
         } else {
@@ -481,7 +487,6 @@ int fs_read(int fd, void *buf, size_t count)
             break;
         }
     }
-
     // remember the case when file is 0
     return already_read;
 }
