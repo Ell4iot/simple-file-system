@@ -6,5 +6,7 @@
 #include <stdbool.h>
 
 int main(void){
-    uint32_t file_size;
+    uint32_t  file_size = 6;
+    void* x ;
+    memcpy(x,&file_size,32);
 }
