@@ -64,7 +64,7 @@ int fs_mount(const char *diskname)
 
     // FAT creation， initialize
     int fat_total_entry = (spb.fat_amount) * 4096;
-    fat_array = (uint16_t *)malloc(fat_total_entry * sizeof(uint16_t)); //malloc size in bytes
+    fat_array = (uint16_t *)malloc(fat_total_entry * sizeof(uint16_t));
     memset(fat_array, 0, fat_total_entry);
     for (int i = 0; i < spb.fat_amount + 1; i++) {
         // superblock is at 0, fat array starts in the 1st block
@@ -129,7 +129,7 @@ int fs_info(void)
     printf("fat_free_ratio=%d/%d\n", fat_count, spb.data_block_amount);
     int root_count = 0;
     for (int i = 0; i < FS_FILE_MAX_COUNT; i++) {
-        if (root_array[i].file_name[0] == 0) {
+        if (root_array[i].file_name[0] == '\0') {
             root_count++;
         }
     }
