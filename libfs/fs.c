@@ -65,7 +65,7 @@ int fs_mount(const char *diskname)
     // FAT creation， initialize
     int fat_total_entry = (spb.fat_amount) * 4096;
     fat_array = (uint16_t *)malloc(fat_total_entry * sizeof(uint16_t));
-    //memset(fat_array, 0, fat_total_entry);
+    memset(fat_array, 0, fat_total_entry);
     for (int i = 0; i < spb.fat_amount + 1; i++) {
         // superblock is at 0, fat array starts in the 1st block
         if (block_read(i + 1, fat_array + i * 2048)) {
@@ -73,7 +73,7 @@ int fs_mount(const char *diskname)
         }
     }
     // Root directory creation
-    //memset(root_array, 0, 4096);
+    memset(root_array, 0, 4096);
     if (block_read(spb.root_index, root_array)) {
         return -1;
     }
@@ -383,8 +383,6 @@ int fs_write(int fd, void *buf, size_t count)
         } else {
             bytes_to_write = remaining_to_write;
         }
-        fwrite(bounce + already_wrote, 1, 2742, stdout);
-
         memcpy(second_bounce + remain_offset, buf + already_wrote, bytes_to_write);
         block_write(before_data_block + block_to_start, second_bounce);
         already_wrote = already_wrote + bytes_to_write;
