@@ -465,6 +465,7 @@ int fs_read(int fd, void *buf, size_t count)
         already_read = already_read + bytes_to_read;
         remaining_to_read = remaining_to_read - bytes_to_read;
 
+
         remain_offset = 0;
         block_to_start = fat_array[block_to_start];
         // stop reading if reach the end of the file
