@@ -178,36 +178,40 @@ int fs_delete(const char *filename)
     if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
         return -1;
     }
-    if (root_array[0].file_name[0] != '\0'){
-        //printf("cao!\n");
-    }
-    if (memcmp(filename, root_array[0].file_name, FS_FILENAME_LEN) == 0){
-        //printf("fuck!\n");
-    }
 
-    int index = 0;
-    for (; index < 128; index++){
-        if ((root_array[index].file_name[0] != '\0') &&
-            !(memcmp(filename, root_array[index].file_name, FS_FILENAME_LEN))){
+    int index;
+    for (int i = 0; i < 128; i++){
+        if ((root_array[i].file_name[0] != '\0') &&
+            !(memcmp(filename, root_array[i].file_name, strlen(filename)))){
+            index = i;
             break;
         }
+        if (i == 127) {
+            return -1;
+        }
     }
-    if (index == 127){
-        //printf("?\n");
-        return -1;
-    }
+
     memset(root_array[index].file_name, '\0', FS_FILENAME_LEN);
 
-    int next_fat_index = root_array[index].first_data_index;
-    while (next_fat_index != FAT_EOC){
-        memcpy(&next_fat_index, &(fat_array[next_fat_index]), sizeof(fat_array[next_fat_index]));
-        fat_array[next_fat_index] = 0;
+    int next_fat_index;
+    int start_fat_index = root_array[index].first_data_index;
+    printf("%d", start_fat_index);
+    int before_data_block = 1 + spb.fat_amount + 1;
+    uint8_t buf[4096];
+    memset(buf, '\0', 4096);
+    while (true){
+        next_fat_index = fat_array[start_fat_index];
+        fat_array[start_fat_index] = 0;
+        block_write(before_data_block + start_fat_index, buf);
+        if (next_fat_index == FAT_EOC) {
+            break;
+        }
+        start_fat_index = next_fat_index;
     }
 
     root_array[index].first_data_index = FAT_EOC;
     root_array[index].file_size = 0;
     return 0;
-
 }
 
 int fs_ls(void)
