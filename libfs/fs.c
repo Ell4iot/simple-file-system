@@ -321,7 +321,7 @@ uint16_t data_index(uint16_t current_block, int remaining) {
 int* cal_codeblocks_needed(uint32_t *remain_offset,size_t count){ 
     int cur_block_remain = BLOCK_SIZE - *remain_offset;
     int new_count;
-    if(count > cur_block_remain) {
+    if((int)count > cur_block_remain) {
         new_count = count - cur_block_remain;
     }
     else{
