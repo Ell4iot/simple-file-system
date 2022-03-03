@@ -322,7 +322,7 @@ uint16_t data_index(uint16_t current_block, int remaining) {
     return data_index(next, remaining);
 }
 //计算要写几个block 返回（要写几个block，最后一个block要写多少bit）
-int* cal_codeblocks_needed(uint32_t *remain_offset,size_t count){ 
+void cal_codeblocks_needed(uint32_t *remain_offset,size_t count,int* rc){ 
     int cur_block_remain = BLOCK_SIZE - *remain_offset;
     int new_count;
     if((int)count > cur_block_remain) {
@@ -337,11 +337,11 @@ int* cal_codeblocks_needed(uint32_t *remain_offset,size_t count){
         block_needed++;
     }
     block_needed ++;
-    int rc[] = {block_needed,last_block_offset};
-    return rc;
+    rc[0] = block_needed;
+    rc[1] = last_block_offset;
 }
 //计算从现在的block算起 fat里面有几个block可以写
-int remain_block_count(uint16_t data_index){
+int remaining_block_count(uint16_t data_index){
     int fat_index = data_index;
     int count = 0;
     while(fat_array[fat_index] != FAT_EOC){
@@ -359,7 +359,7 @@ void fat_modify(int* needed_info,int remain_block_count,uint16_t data_index){
     }
     int added_fat = 0;
     for(int i = 0; added_fat < added_block_amount; i++){
-        if (fat_array[i] == NULL){
+        if (fat_array[i] == 0){
             fat_array[fat_index] = i;
             fat_index = i;
             added_fat++; 
@@ -368,8 +368,7 @@ void fat_modify(int* needed_info,int remain_block_count,uint16_t data_index){
     fat_array[fat_index] =FAT_EOC;
 }
 //把要写的fat的block的index放到一个array里 比如{3，6，7，8}
-int* generate_fat_array_mod(uint16_t data_index,int count){
-    int rc[count];
+void generate_fat_array_mod(uint16_t data_index, int* rc){
     int fat_index = data_index;
     int index = 0;
     while(fat_array[fat_index] != FAT_EOC){
@@ -377,7 +376,6 @@ int* generate_fat_array_mod(uint16_t data_index,int count){
         fat_index = fat_array[fat_index];
         index++;
     }
-    return rc;
 }
 int fs_write(int fd, void *buf, size_t count)
 {
@@ -403,15 +401,17 @@ int fs_write(int fd, void *buf, size_t count)
         // offset is at the fisrt data block
         block_to_start = first_data_index;
     }
-    int* block_needed_info = cal_codeblocks_needed(&remain_block_count,count);
-    int remain_block_count = remain_block_count(block_amount)
+    int block_needed_info[2] ;
+    cal_codeblocks_needed(&remain_offset,count,block_needed_info);
+    int remain_block_count = remaining_block_count(block_amount);
     //改fat 加新的block
     if(block_needed_info[0]>remain_block_count){
         fat_modify(block_needed_info,remain_block_count,block_to_start);
     }
-    int fat_array_modify[block_needed_info[0]] = generate_fat_array_mod(block_to_start,block_needed_info[0]);
+    int fat_array_modify[block_needed_info[0]];
+    generate_fat_array_mod(block_to_start,fat_array_modify);
     int bits_done = 0;
-    void *temp;
+    void *temp = 0;
     int remaining_written_blocks = block_needed_info[1];
     int fat_array_index = 0;
     //如果第一个array要写部分 在这个if中执行
@@ -421,7 +421,7 @@ int fs_write(int fd, void *buf, size_t count)
         memcpy(temp+remain_offset,buf+bits_done,block_needed_info[1]);
         bits_done = block_needed_info[1];
         block_write(first_data_index,temp);
-        remaining_written_blocks - 1;
+        remaining_written_blocks = remaining_written_blocks - 1;
         fat_array_index++;
     }
     //写所有的完整block写入 除了最后一个
