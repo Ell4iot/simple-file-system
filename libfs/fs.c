@@ -129,7 +129,7 @@ int fs_info(void)
     printf("fat_free_ratio=%d/%d\n", fat_count, spb.data_block_amount);
     int root_count = 0;
     for (int i = 0; i < FS_FILE_MAX_COUNT; i++) {
-        if ((root_array[i].file_name[0] == '\0')) {
+        if (root_array[i].file_name[0] == 0) {
             root_count++;
         }
     }
