@@ -10,6 +10,7 @@
 #define FAT_EOC 65535
 #define REACH_MAX_FILE -1
 #define FILE_ALREADY_EXIST -2
+#define FAT_FULL -3
 // type and struct definition
 struct superblock {
     uint64_t signature;
@@ -77,7 +78,7 @@ int fs_mount(const char *diskname)
     mount = true;
     return 0;
 }
-//./test_fs.x info disk.fs
+
 int fs_umount(void)
 {
     if (!mount) {
@@ -107,7 +108,6 @@ int fs_umount(void)
 
 int fs_info(void)
 {
-    /* TODO: Phase 1 */
     if (!mount) {
         return -1;
     }
@@ -137,9 +137,7 @@ int fs_info(void)
 int find_empty(const char *filename, bool return_index, int *index) {
     int empty_entry = REACH_MAX_FILE;
     bool search = true;
-    //printf("%s", root_array[0].file_name);
     for (int i = 0; i < 128; i++) {
-        //printf("i: %d, name: %s\n", i, root_array[i].file_name);
         if (search && (root_array[i].file_name[0] == '\0')) {
             empty_entry = i;
             search = false;
@@ -190,15 +188,14 @@ int fs_delete(const char *filename)
             return -1;
         }
     }
-
     memset(root_array[index].file_name, '\0', FS_FILENAME_LEN);
 
     int next_fat_index;
     int start_fat_index = root_array[index].first_data_index;
-    printf("%d", start_fat_index);
     int before_data_block = 1 + spb.fat_amount + 1;
     uint8_t buf[4096];
     memset(buf, '\0', 4096);
+
     while (true){
         next_fat_index = fat_array[start_fat_index];
         fat_array[start_fat_index] = 0;
@@ -212,15 +209,14 @@ int fs_delete(const char *filename)
     root_array[index].first_data_index = FAT_EOC;
     root_array[index].file_size = 0;
     return 0;
+
 }
 
 int fs_ls(void)
 {
-    /* TODO: Phase 2 */
     printf("FS Ls:\n");
     for (int i = 0; i < 128; i++) {
         if (root_array[i].file_name[0] != '\0'){
-            //printf("i is: %d", i);
             printf("file: %s, size: %d, data_blk: %d\n", root_array[i].file_name,
                    root_array[i].file_size, root_array[i].first_data_index);
         }
@@ -232,14 +228,11 @@ int fs_ls(void)
 int fs_open(const char *filename)
 {
     // check no FS is mounted, or invalid filename, or can't open filename
-    if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){
-        //printf("232\n");
+    if ((!mount) || (filename == NULL) || (sizeof(filename) > FS_FILENAME_LEN)){\
         return -1;
     }
     int root_index;
-    //printf("236: %s\n", filename);
     if (find_empty(filename, true, &root_index) != FILE_ALREADY_EXIST) {
-        //printf("237\n");
         return -1;
     }
     // check if fd table is full
@@ -251,11 +244,10 @@ int fs_open(const char *filename)
         }
     }
     if (fd == -1) {
-        //printf("249\n");
         return -1;
     }
     // open the file
-    memcpy(fd_table[fd].file_name, filename, 16);
+    memcpy(fd_table[fd].file_name, filename, strlen(filename));
     fd_table[fd].offset = 0;
     fd_table[fd].root_index = root_index;
 
@@ -307,12 +299,11 @@ int fs_lseek(int fd, size_t offset)
     fd_table[fd].offset = offset;
     return 0;
 }
-//find current offset location 
 void find_block(uint32_t offset, int *block_amount, uint32_t *remain_offset) {
-    *remain_offset = offset % BLOCK_SIZE;
-    *block_amount = offset /BLOCK_SIZE;
+    *remain_offset = offset % 4096;
+    *block_amount = offset / 4096;
 }
-//find current blocfk index
+
 uint16_t data_index(uint16_t current_block, int remaining) {
     uint16_t next = fat_array[current_block];
     remaining--;
@@ -321,120 +312,113 @@ uint16_t data_index(uint16_t current_block, int remaining) {
     }
     return data_index(next, remaining);
 }
-//计算要写几个block 返回（要写几个block，最后一个block要写多少bit）
-int* cal_codeblocks_needed(uint32_t *remain_offset,size_t count){ 
-    int cur_block_remain = BLOCK_SIZE - *remain_offset;
-    int new_count;
-    if((int)count > cur_block_remain) {
-        new_count = count - cur_block_remain;
-    }
-    else{
-        new_count = cur_block_remain;
-    }
-    int block_needed = new_count/BLOCK_SIZE;
-    int last_block_offset = new_count %BLOCK_SIZE;
-    if (last_block_offset != 0){
-        block_needed++;
-    }
-    block_needed ++;
-    int rc[] = {block_needed,last_block_offset};
-    return rc;
-}
-//计算从现在的block算起 fat里面有几个block可以写
-int remain_block_count(uint16_t data_index){
-    int fat_index = data_index;
-    int count = 0;
-    while(fat_array[fat_index] != FAT_EOC){
-        fat_index = fat_array[fat_index];
-        count++;
-    }
-    return count;
-}
-//给fat加block
-void fat_modify(int* needed_info,int remain_block_count,uint16_t data_index){
-    int added_block_amount = needed_info[0] - remain_block_count;
-    int fat_index = data_index;
-    while(fat_array[fat_index] != FAT_EOC){
-        fat_index = fat_array[fat_index];
-    }
-    int added_fat = 0;
-    for(int i = 0; added_fat < added_block_amount; i++){
-        if (fat_array[i] == NULL){
-            fat_array[fat_index] = i;
-            fat_index = i;
-            added_fat++; 
+int allocate_new_data(void) {
+    for (int i = 0; i < spb.data_block_amount; i++) {
+        if (fat_array[i] == 0) {
+            return i;
         }
     }
-    fat_array[fat_index] =FAT_EOC;
-}
-//把要写的fat的block的index放到一个array里 比如{3，6，7，8}
-int* generate_fat_array_mod(uint16_t data_index,int count){
-    int rc[count];
-    int fat_index = data_index;
-    int index = 0;
-    while(fat_array[fat_index] != FAT_EOC){
-        rc[index] = fat_index;
-        fat_index = fat_array[fat_index];
-        index++;
-    }
-    return rc;
+    return FAT_FULL;
 }
 int fs_write(int fd, void *buf, size_t count)
 {
-    /* TODO: Phase 4 */
-    int block_amount;
-    uint32_t remain_offset;
-    find_block(fd_table[fd].offset, &block_amount, &remain_offset);
-    uint16_t first_data_index = root_array[fd_table[fd].root_index].first_data_index;
-    uint16_t block_to_start;
-    if (buf == NULL){
-        return -1;
-    }
-    if ((!mount)){
+    if ((!mount) || (buf == NULL)){
         return -1;
     }
     if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
         return -1;
     }
+    uint8_t bounce[4096];
+    uint8_t second_bounce[4096];
+    int block_amount;        // block_amount = offset / 4096
+    uint32_t remain_offset;  // remain_offset = offset - n * 4096 (n = 0, 1, 2, 3,...)
+    size_t remaining_to_write = count;    // counting the size of file left to write
+    size_t bytes_to_write;        // bytes of file to write in current iteration
+    int already_wrote = 0;        // counting the size of file which are already wrote
+    uint16_t block_to_start;
+    bool extend_or_not = false;    // Whether to change the file size or not
+    int root_index = fd_table[fd].root_index;
+    uint16_t first_data_index = root_array[root_index].first_data_index;
+
+    if (first_data_index == FAT_EOC) {
+        // The file to write is empty, allocate FAT
+        int new_data = allocate_new_data();  // new data block
+        if (new_data != FAT_FULL) {
+            // empty data block found
+            extend_or_not = true;
+            first_data_index = new_data;
+            fat_array[first_data_index] = FAT_EOC;
+            root_array[root_index].first_data_index = new_data;
+        } else {
+            // no empty data block
+            return 0;
+        }
+    }
+    // given the offset, find the corresponding data block to start writing
+    // block_to_start is the place where we start writing.
+    find_block(fd_table[fd].offset, &block_amount, &remain_offset);
     if (block_amount) {
         // need to find the data block where offset is at
-        block_to_start = data_index(first_data_index, block_amount - 1);
+        block_to_start = data_index(first_data_index, block_amount);
     } else {
         // offset is at the fisrt data block
         block_to_start = first_data_index;
+
     }
-    int* block_needed_info = cal_codeblocks_needed(&remain_block_count,count);
-    int remain_block_count = remain_block_count(block_amount)
-    //改fat 加新的block
-    if(block_needed_info[0]>remain_block_count){
-        fat_modify(block_needed_info,remain_block_count,block_to_start);
+    int before_data_block = 1 + spb.fat_amount + 1;
+    size_t extend_size = 0;
+    while (remaining_to_write) {
+        // firstly read the entire block where offset is at into bounce
+        block_read(before_data_block + block_to_start, bounce);
+        // save the content before the offset
+        memcpy(second_bounce, bounce, remain_offset);
+        if (remaining_to_write >= 4096 - remain_offset) {
+            bytes_to_write = 4096 - remain_offset;
+        } else {
+            bytes_to_write = remaining_to_write;
+        }
+        fwrite(bounce + already_wrote, 1, 2742, stdout);
+
+        memcpy(second_bounce + remain_offset, buf + already_wrote, bytes_to_write);
+        block_write(before_data_block + block_to_start, second_bounce);
+        already_wrote = already_wrote + bytes_to_write;
+        remaining_to_write = remaining_to_write - bytes_to_write;
+
+        //remain_offset only applies for the first time
+        //set it to 0 after first write
+        remain_offset = 0;
+        if (extend_or_not) {
+            // entering here, means that new data block is allocated
+            // need to increase the size
+            extend_size = bytes_to_write;
+        }
+        // if the if statement above fails, extend_size will remain 0
+        root_array[root_index].file_size = root_array[root_index].file_size + extend_size;
+
+        if (!remaining_to_write) {
+            // finish writing
+            break;
+        }
+        // check whether to extend or not
+        if (fat_array[block_to_start] == FAT_EOC) {
+            int new_data = allocate_new_data();
+            if (new_data != FAT_FULL) {
+                // find space to extend
+                extend_or_not = true;
+                fat_array[block_to_start] = new_data;
+                fat_array[new_data] = FAT_EOC;
+            } else {
+                // no space to extend
+                break;
+            }
+            block_to_start = new_data;
+        } else {
+            block_to_start = fat_array[block_to_start];
+        }
+
     }
-    int fat_array_modify[block_needed_info[0]] = generate_fat_array_mod(block_to_start,block_needed_info[0]);
-    int bits_done = 0;
-    void *temp;
-    int remaining_written_blocks = block_needed_info[1];
-    int fat_array_index = 0;
-    //如果第一个array要写部分 在这个if中执行
-    //先read出来原有的block 然后memcpy后半段
-    if(remain_offset != 0){
-        block_read(first_data_index,temp);
-        memcpy(temp+remain_offset,buf+bits_done,block_needed_info[1]);
-        bits_done = block_needed_info[1];
-        block_write(first_data_index,temp);
-        remaining_written_blocks - 1;
-        fat_array_index++;
-    }
-    //写所有的完整block写入 除了最后一个
-    while(remain_block_count > 1 ){
-        memcpy(temp,buf+bits_done,BLOCK_SIZE);
-        bits_done += BLOCK_SIZE;
-        block_write(fat_array_modify[fat_array_index],temp);
-        fat_array_index++;
-    }
-    //写最后一个 写入 count-bits_done 位数据 避免memcpy segamentation
-    memcpy(temp,buf+bits_done,count-bits_done);
-    block_write(fat_array_modify[fat_array_index],temp);
-    return 0;
+    fd_table[fd].offset = fd_table[fd].offset + already_wrote;
+    return already_wrote;
 }
 
 int fs_read(int fd, void *buf, size_t count)
@@ -452,16 +436,11 @@ int fs_read(int fd, void *buf, size_t count)
     size_t bytes_to_read;
     int already_read = 0;
     uint16_t block_to_start;
-
     // given the offset, find the corresponding data block to start reading
     // block_to_start is the place where we start reading.
     find_block(fd_table[fd].offset, &block_amount, &remain_offset);
     uint16_t first_data_index = root_array[fd_table[fd].root_index].first_data_index;
 
-    // file is empty, don't read at all
-    if (first_data_index == FAT_EOC) {
-        return 0;
-    }
     if (block_amount) {
         // need to find the data block where offset is at
         block_to_start = data_index(first_data_index, block_amount);
@@ -474,7 +453,6 @@ int fs_read(int fd, void *buf, size_t count)
     while (remaining_to_read) {
 
         block_read(before_data_block + block_to_start, bounce);
-
         if (remaining_to_read >= 4096 - remain_offset) {
             bytes_to_read = 4096 - remain_offset;
         } else {
@@ -491,6 +469,6 @@ int fs_read(int fd, void *buf, size_t count)
             break;
         }
     }
-    // remember the case when file is 0
+    fd_table[fd].offset = fd_table[fd].offset + already_read;
     return already_read;
 }
