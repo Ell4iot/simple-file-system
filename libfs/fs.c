@@ -120,7 +120,7 @@ int fs_info(void)
     printf("rdir_blk=%d\n", spb.root_index);
     printf("data_blk=%d\n", spb.data_start_index);
     printf("data_blk_count=%d\n", spb.data_block_amount);
-    int fat_count;
+    int fat_count = 0;
     for (int i = 0; i < spb.data_block_amount; i++) {
         if (fat_array[i] == 0) {
             fat_count++;
