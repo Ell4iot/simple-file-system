@@ -328,6 +328,9 @@ int fs_write(int fd, void *buf, size_t count)
     if (fd_table[fd].file_name[0] == '\0'  || fd > 31 || fd < 0){
         return -1;
     }
+    if (!count) {
+        return 0;
+    }
     uint8_t bounce[4096];
     uint8_t second_bounce[4096];
     int block_amount;        // block_amount = offset / 4096
