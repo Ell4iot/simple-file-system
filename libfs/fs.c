@@ -37,7 +37,8 @@ struct file_descriptor {
 
 typedef struct root_dir root_dir;
 typedef struct file_descriptor fd_struct;
-// define global variables
+
+// global variables
 struct superblock spb;
 uint16_t *fat_array;
 root_dir root_array[FS_FILE_MAX_COUNT];
@@ -77,7 +78,6 @@ int fs_mount(const char *diskname)
     if (block_read(spb.root_index, root_array)) {
         return -1;
     }
-
     mount = true;
     return 0;
 }
@@ -137,6 +137,7 @@ int fs_info(void)
 
     return 0;
 }
+// helper function
 int find_empty(const char *filename, bool return_index, int *index) {
     int empty_entry = REACH_MAX_FILE;
     bool search = true;
@@ -144,12 +145,13 @@ int find_empty(const char *filename, bool return_index, int *index) {
         if (search && (root_array[i].file_name[0] == '\0')) {
             empty_entry = i;
             search = false;
+            // don't check empty in the following iteration
         }
         if (!memcmp((root_array[i].file_name), filename, strlen(filename))) {
             if (return_index) {
                 *index = i;
             }
-            return FILE_ALREADY_EXIST;
+            return FILE_ALREADY_EXIST; // if found same name in the root directory
         }
     }
     return empty_entry;
@@ -452,7 +454,6 @@ int fs_read(int fd, void *buf, size_t count)
         // offset is at the fisrt data block
         block_to_start = first_data_index;
     }
-    //test_fs.x cat disk.fs bunnygirl.txt
     int before_data_block = 1 + spb.fat_amount + 1;
     while (remaining_to_read) {
 
