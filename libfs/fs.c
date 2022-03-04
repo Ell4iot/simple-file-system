@@ -371,7 +371,6 @@ int fs_write(int fd, void *buf, size_t count)
     } else {
         // offset is at the fisrt data block
         block_to_start = first_data_index;
-
     }
     int before_data_block = 1 + spb.fat_amount + 1;
     size_t extend_size = 0;
@@ -389,7 +388,6 @@ int fs_write(int fd, void *buf, size_t count)
         block_write(before_data_block + block_to_start, second_bounce);
         already_wrote = already_wrote + bytes_to_write;
         remaining_to_write = remaining_to_write - bytes_to_write;
-
         //remain_offset only applies for the first time
         //set it to 0 after first write
         remain_offset = 0;
